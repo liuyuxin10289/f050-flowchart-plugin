@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { bitable } from '@lark-opdev/block-bitable-api';
+import { bitable } from '@lark-base-open/js-sdk';
 import {
   ReactFlow,
   Background,
