@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { bitable } from '@lark-base-open/js-sdk';
+import { bitable, dashboard, DashboardState } from '@lark-base-open/js-sdk';
 import {
   ReactFlow,
   Background,
@@ -280,6 +280,15 @@ export default function App() {
       setState({ loading: false, error: String((e && e.message) || e), items: [] });
     }
   }, [setNodes, setEdges]);
+
+  // 感知仪表盘插件状态，确保飞书按「创建→配置→确定」流程处理
+  useEffect(() => {
+    try {
+      void dashboard.state;
+    } catch (e) {
+      /* dashboard 模块不可用时忽略 */
+    }
+  }, []);
 
   useEffect(() => {
     load();
