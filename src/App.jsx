@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { bitable, dashboard, DashboardState } from '@lark-base-open/js-sdk';
+import { bitable, dashboard, DashboardState, SourceType } from '@lark-base-open/js-sdk';
 import {
   ReactFlow,
   Background,
@@ -234,6 +234,7 @@ export default function App() {
   const [state, setState] = useState({ loading: true, error: null, items: [] });
   const [msg, setMsg] = useState('');
   const [editing, setEditing] = useState(null);
+  const [dashState, setDashState] = useState(null);
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const nodesRef = useRef(nodes);
@@ -281,12 +282,12 @@ export default function App() {
     }
   }, [setNodes, setEdges]);
 
-  // 感知仪表盘插件状态，确保飞书按「创建→配置→确定」流程处理
+  // 感知仪表盘插件状态（Create/Config/View/FullScreen）
   useEffect(() => {
     try {
-      void dashboard.state;
+      setDashState(dashboard.state);
     } catch (e) {
-      /* dashboard 模块不可用时忽略 */
+      setDashState('');
     }
   }, []);
 
@@ -344,8 +345,39 @@ export default function App() {
     setMsg('已重置为「测试项总表」的自动生成结果');
   }, [state.items, setNodes, setEdges]);
 
+  // 配置态：点「确定」保存配置（数据源固定为测试项总表），飞书据此完成添加
+  const handleConfirm = useCallback(async () => {
+    try {
+      await dashboard.saveConfig({
+        dataConditions: {
+          tableId: TABLE_ID,
+          dataRange: { type: SourceType.ALL },
+          series: 'COUNTA',
+          groups: [],
+        },
+      });
+    } catch (e) {
+      setMsg('保存配置失败：' + String((e && e.message) || e));
+    }
+  }, []);
+
+  const isConfig = dashState === DashboardState.Create || dashState === DashboardState.Config;
+
   if (state.loading) return <div className="tip">正在加载工艺路线数据…</div>;
   if (state.error) return <div className="tip error">加载失败：{state.error}</div>;
+
+  // 配置态（创建/配置）：渲染说明 + 右下角「确定」按钮
+  if (isConfig) {
+    return (
+      <div className="app">
+        <div className="config-panel">
+          <div className="config-title">F050 产测工艺路线导图</div>
+          <div className="config-desc">数据源固定为「测试项总表」，点击右下角「确定」将流程图添加到仪表盘。</div>
+        </div>
+        <button className="config-confirm" onClick={handleConfirm}>确定</button>
+      </div>
+    );
+  }
 
   return (
     <div className="app">

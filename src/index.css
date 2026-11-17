@@ -207,6 +207,46 @@ body {
   color: #a32d2d;
 }
 
+.config-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 24px;
+}
+
+.config-title {
+  font-size: 16px;
+  font-weight: 500;
+  color: #1f2329;
+}
+
+.config-desc {
+  font-size: 13px;
+  color: #5f5e5a;
+  text-align: center;
+  max-width: 320px;
+}
+
+.config-confirm {
+  position: fixed;
+  bottom: 12px;
+  right: 12px;
+  font-size: 14px;
+  padding: 8px 24px;
+  border: none;
+  border-radius: 8px;
+  background: #185fa5;
+  color: #ffffff;
+  cursor: pointer;
+}
+
+.config-confirm:hover {
+  background: #0c447c;
+}
+
 .edit-mask {
   position: fixed;
   inset: 0;
