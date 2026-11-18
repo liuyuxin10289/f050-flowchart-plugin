@@ -40,8 +40,8 @@ const PLATE_COLOR = {
 
 const DIAMOND_W = 140; // 菱形宽
 const DIAMOND_H = 70; // 菱形高
-const NODE_GAP = 44; // 节点横向间距
-const STEP_X = DIAMOND_W + NODE_GAP; // 184
+const NODE_GAP = 56; // 节点横向间距
+const STEP_X = DIAMOND_W + NODE_GAP; // 196
 const STEP_Y = 100; // 行间距
 const LABEL_W = 88; // 左侧分组标签宽
 
@@ -193,6 +193,31 @@ function buildInitial(items, statusMap) {
     edges.push({ id: `e-${prevId}-${endId}`, source: prevId, target: endId, type: 'straight' });
   });
   return { nodes, edges };
+}
+
+// 加载草稿后，按当前尺寸重算坐标（修复旧草稿因尺寸调整导致的重叠）
+function relayoutDraft(nodes) {
+  const result = nodes.map((n) => ({ ...n, position: { ...n.position } }));
+  const labels = result.filter((n) => n.type === 'label').sort((a, b) => a.position.y - b.position.y);
+  labels.forEach((label, li) => {
+    const oldY = label.position.y;
+    const newY = li * STEP_Y;
+    const plate = label.data && label.data.plate;
+    const ds = result.filter((n) => n.type === 'diamond' && Math.abs(n.position.y - oldY) < 6);
+    ds.sort((a, b) => a.position.x - b.position.x);
+    const startX = LABEL_W + NODE_GAP + 72 + NODE_GAP;
+    ds.forEach((n, i) => {
+      n.position.x = startX + i * (DIAMOND_W + NODE_GAP);
+      n.position.y = newY;
+    });
+    label.position.x = 0;
+    label.position.y = newY;
+    const st = result.find((n) => n.id === `start-${plate}`);
+    const en = result.find((n) => n.id === `end-${plate}`);
+    if (st) { st.position.x = LABEL_W + NODE_GAP; st.position.y = newY + 13; }
+    if (en) { en.position.x = startX + ds.length * (DIAMOND_W + NODE_GAP); en.position.y = newY + 13; }
+  });
+  return result;
 }
 
 // 加载草稿后，按最新状态表为工序节点补色（兼容旧草稿、支持新增状态）
@@ -365,9 +390,9 @@ export default function App() {
       }
 
       if (draft) {
-        setNodes(normalizeDraftColors(draft.nodes, smap.map));
+        setNodes(relayoutDraft(normalizeDraftColors(draft.nodes, smap.map)));
         setEdges((draft.edges || []).map((e) => ({ ...e, type: 'straight' })));
-        setMsg('已加载已保存的编辑结果（已按最新状态着色）');
+        setMsg('已加载已保存的编辑结果（已自动重排布局）');
       } else {
         const init = buildInitial(items, smap.map);
         setNodes(init.nodes);
