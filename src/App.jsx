@@ -9,6 +9,7 @@ import {
   addEdge,
   Handle,
   Position,
+  MarkerType,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 
@@ -37,9 +38,12 @@ const PLATE_COLOR = {
   '(未分板块)': { fill: '#D3D1C7', stroke: '#5F5E5A', text: '#444441' },
 };
 
-const STEP_X = 140;
-const STEP_Y = 92;
-const LABEL_W = 84;
+const DIAMOND_W = 168; // 菱形宽
+const DIAMOND_H = 84; // 菱形高
+const NODE_GAP = 22; // 节点横向间距
+const STEP_X = DIAMOND_W + NODE_GAP; // 190
+const STEP_Y = 122; // 行间距
+const LABEL_W = 100; // 左侧分组标签宽
 
 // 兼容文本字段值
 function getText(v) {
@@ -155,11 +159,11 @@ function buildInitial(items, statusMap) {
       position: { x: 0, y },
       data: { label: plate, plate },
     });
-    let cx = LABEL_W + 14;
+    let cx = LABEL_W + NODE_GAP;
     const startId = `start-${plate}`;
-    nodes.push({ id: startId, type: 'start', position: { x: cx, y: y + 8 }, data: {} });
-    edges.push({ id: `e-${labelId}-${startId}`, source: labelId, target: startId, type: 'smoothstep' });
-    cx += 60 + 14;
+    nodes.push({ id: startId, type: 'start', position: { x: cx, y: y + 16 }, data: {} });
+    edges.push({ id: `e-${labelId}-${startId}`, source: labelId, target: startId, type: 'straight' });
+    cx += 84 + NODE_GAP;
 
     let prevId = startId;
     list.forEach((it) => {
@@ -179,14 +183,14 @@ function buildInitial(items, statusMap) {
           text: '#ffffff',
         },
       });
-      edges.push({ id: `e-${prevId}-${id}`, source: prevId, target: id, type: 'smoothstep' });
+      edges.push({ id: `e-${prevId}-${id}`, source: prevId, target: id, type: 'straight' });
       prevId = id;
-      cx += 112 + 14;
+      cx += DIAMOND_W + NODE_GAP;
     });
 
     const endId = `end-${plate}`;
-    nodes.push({ id: endId, type: 'end', position: { x: cx, y: y + 8 }, data: {} });
-    edges.push({ id: `e-${prevId}-${endId}`, source: prevId, target: endId, type: 'smoothstep' });
+    nodes.push({ id: endId, type: 'end', position: { x: cx, y: y + 16 }, data: {} });
+    edges.push({ id: `e-${prevId}-${endId}`, source: prevId, target: endId, type: 'straight' });
   });
   return { nodes, edges };
 }
@@ -238,11 +242,11 @@ function DiamondNode({ data, selected }) {
   const fill = data.fill || STATUS_FALLBACK;
   const text = data.text || '#ffffff';
   return (
-    <div className="dnode" style={{ width: 112, height: 56 }} title={data.name || ''}>
+    <div className="dnode" style={{ width: DIAMOND_W, height: DIAMOND_H }} title={data.name || ''}>
       <Handle type="target" position={Position.Left} className="dhandle" />
-      <svg width="112" height="56" viewBox="0 0 112 56">
+      <svg width={DIAMOND_W} height={DIAMOND_H} viewBox={`0 0 ${DIAMOND_W} ${DIAMOND_H}`}>
         <polygon
-          points="56,2 110,28 56,54 2,28"
+          points={`${DIAMOND_W / 2},2 ${DIAMOND_W - 2},${DIAMOND_H / 2} ${DIAMOND_W / 2},${DIAMOND_H - 2} 2,${DIAMOND_H / 2}`}
           fill={fill}
           stroke={selected ? '#378ADD' : 'rgba(0,0,0,0.18)'}
           strokeWidth={selected ? 2.5 : 1}
@@ -265,8 +269,8 @@ function RectNode({ data, selected }) {
     <div
       className="rnode"
       style={{
-        width: 112,
-        height: 56,
+        width: DIAMOND_W,
+        height: DIAMOND_H,
         background: fill,
         borderColor: selected ? '#378ADD' : 'rgba(0,0,0,0.15)',
       }}
@@ -285,7 +289,7 @@ function RectNode({ data, selected }) {
 function LabelNode({ data }) {
   const pc = PLATE_COLOR[data.plate] || PLATE_COLOR['(未分板块)'];
   return (
-    <div className="lnode" style={{ background: pc.fill, borderColor: pc.stroke, color: pc.text, width: LABEL_W, height: 56 }}>
+    <div className="lnode" style={{ background: pc.fill, borderColor: pc.stroke, color: pc.text, width: LABEL_W, height: DIAMOND_H }}>
       {data.label}
       <Handle type="source" position={Position.Right} className="dhandle" />
     </div>
@@ -295,7 +299,7 @@ function LabelNode({ data }) {
 // 结束节点
 function EndNode() {
   return (
-    <div className="enode" style={{ width: 60, height: 40 }}>
+    <div className="enode" style={{ width: 84, height: 52 }}>
       <Handle type="target" position={Position.Left} className="dhandle" />
       结束
     </div>
@@ -305,7 +309,7 @@ function EndNode() {
 // 开始节点
 function StartNode() {
   return (
-    <div className="snode" style={{ width: 60, height: 40 }}>
+    <div className="snode" style={{ width: 84, height: 52 }}>
       <Handle type="target" position={Position.Left} className="dhandle" />
       开始
       <Handle type="source" position={Position.Right} className="dhandle" />
@@ -321,6 +325,7 @@ export default function App() {
   const [editing, setEditing] = useState(null);
   const [dashState, setDashState] = useState(null);
   const [showShapeMenu, setShowShapeMenu] = useState(false);
+  const [collapsed, setCollapsed] = useState(false);
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const nodesRef = useRef(nodes);
@@ -500,35 +505,44 @@ export default function App() {
 
   return (
     <div className="app">
-      <div className="toolbar">
-        <div className="t-title">F050 产测工艺路线导图</div>
-        <div className="t-actions">
-          <div className="shape-wrap">
-            <button className="btn" onClick={() => setShowShapeMenu((v) => !v)}>＋ 添加图形</button>
-            {showShapeMenu && (
-              <div className="shape-menu">
-                <button onClick={() => addShape('diamond')}>菱形（工序）</button>
-                <button onClick={() => addShape('rect')}>矩形（工序）</button>
-                <button onClick={() => addShape('start')}>开始</button>
-                <button onClick={() => addShape('end')}>结束</button>
-                <button onClick={() => addShape('label')}>分组标签</button>
+      <div className="header">
+        <span className="h-title">F050 产测工艺路线导图</span>
+        <button className="btn h-toggle" onClick={() => setCollapsed((v) => !v)}>
+          {collapsed ? '展开' : '收起'}
+        </button>
+      </div>
+      {!collapsed && (
+        <>
+          <div className="toolbar">
+            <div className="t-actions">
+              <div className="shape-wrap">
+                <button className="btn" onClick={() => setShowShapeMenu((v) => !v)}>＋ 添加图形</button>
+                {showShapeMenu && (
+                  <div className="shape-menu">
+                    <button onClick={() => addShape('diamond')}>菱形（工序）</button>
+                    <button onClick={() => addShape('rect')}>矩形（工序）</button>
+                    <button onClick={() => addShape('start')}>开始</button>
+                    <button onClick={() => addShape('end')}>结束</button>
+                    <button onClick={() => addShape('label')}>分组标签</button>
+                  </div>
+                )}
               </div>
-            )}
+              <button className="btn btn-primary" onClick={save}>保存</button>
+              <button className="btn" onClick={reset}>重置</button>
+            </div>
           </div>
-          <button className="btn btn-primary" onClick={save}>保存</button>
-          <button className="btn" onClick={reset}>重置</button>
-        </div>
-      </div>
-      <div className="t-msg">{msg}</div>
-      <div className="legend">
-        {statusOrder.map((s) => (
-          <span className="legend-item" key={s}>
-            <i className="lg-dot" style={{ background: statusMap[s] }} />
-            {s}
-          </span>
-        ))}
-        <span className="legend-tip">拖拽移动 · 点选后按 Delete 删除 · 双击编辑 · 从节点边缘拖出连线</span>
-      </div>
+          <div className="t-msg">{msg}</div>
+          <div className="legend">
+            {statusOrder.map((s) => (
+              <span className="legend-item" key={s}>
+                <i className="lg-dot" style={{ background: statusMap[s] }} />
+                {s}
+              </span>
+            ))}
+            <span className="legend-tip">拖拽移动 · 点选后按 Delete 删除 · 双击编辑 · 从节点边缘拖出连线</span>
+          </div>
+        </>
+      )}
       <div className="flow-wrap">
         <ReactFlow
           nodes={nodes}
@@ -538,6 +552,7 @@ export default function App() {
           onConnect={onConnect}
           onNodeDoubleClick={onNodeDoubleClick}
           nodeTypes={nodeTypes}
+          defaultEdgeOptions={{ markerEnd: { type: MarkerType.ArrowClosed, width: 18, height: 18, color: '#6b6a65' } }}
           fitView
           fitViewOptions={{ padding: 0.2 }}
         >
