@@ -16,11 +16,17 @@ const TABLE_ID = 'tblo7aujbBBknvBE'; // 测试项总表
 const DRAFT_TABLE_ID = 'tblUAqCjDSj0Dmrm'; // 流程图草稿表
 const PLATE_ORDER = ['FCT板级', '组件', '整机自检', '整机产测', '模型打印'];
 
+// 状态色：前三种固定，之后新增状态从 EXTRA 色池按首次出现顺序自动分配
 const STATUS_COLOR = {
   已有做法: '#2E7D32',
-  待确认: '#EF9F27',
-  缺口: '#E24B4A',
+  待确认: '#E08A00',
+  缺口: '#D9433F',
 };
+const EXTRA_STATUS_COLORS = [
+  '#1D6FB8', '#6D4FC2', '#0E7C86', '#C23A6B', '#5E7C1F',
+  '#A05A0C', '#3A47B8', '#9D174D', '#0F766E', '#7C2D12',
+];
+const STATUS_FALLBACK = '#B8B6AD'; // 无状态兜底灰
 
 const PLATE_COLOR = {
   FCT板级: { fill: '#B5D4F4', stroke: '#185FA5', text: '#0C447C' },
@@ -100,8 +106,31 @@ function mergeByCode(items) {
   return Array.from(map.values());
 }
 
+// 从表数据中提取「状态 → 颜色」映射（固定前三，其余按首次出现顺序自动分配）
+function buildStatusMap(items) {
+  const map = {};
+  const order = [];
+  const present = new Set((items || []).map((it) => it.status).filter(Boolean));
+  for (const s of Object.keys(STATUS_COLOR)) {
+    if (present.has(s)) {
+      map[s] = STATUS_COLOR[s];
+      order.push(s);
+    }
+  }
+  let i = 0;
+  for (const it of items || []) {
+    const s = it.status;
+    if (s && !(s in map)) {
+      map[s] = EXTRA_STATUS_COLORS[i % EXTRA_STATUS_COLORS.length];
+      order.push(s);
+      i++;
+    }
+  }
+  return { map, order };
+}
+
 // 由表数据生成初始横向泳道图
-function buildInitial(items) {
+function buildInitial(items, statusMap) {
   const merged = mergeByCode(items);
   const g = {};
   for (const p of PLATE_ORDER) g[p] = [];
@@ -135,11 +164,20 @@ function buildInitial(items) {
     let prevId = startId;
     list.forEach((it) => {
       const id = `${plate}|${it.code || it.name}`;
+      const fill = (statusMap && statusMap[it.status]) || STATUS_FALLBACK;
       nodes.push({
         id,
         type: 'diamond',
         position: { x: cx, y },
-        data: { code: it.code, name: it.name, status: it.status, plate, recordId: it.recordId },
+        data: {
+          code: it.code,
+          name: it.name,
+          status: it.status,
+          plate,
+          recordId: it.recordId,
+          fill,
+          text: '#ffffff',
+        },
       });
       edges.push({ id: `e-${prevId}-${id}`, source: prevId, target: id, type: 'smoothstep' });
       prevId = id;
@@ -151,6 +189,17 @@ function buildInitial(items) {
     edges.push({ id: `e-${prevId}-${endId}`, source: prevId, target: endId, type: 'smoothstep' });
   });
   return { nodes, edges };
+}
+
+// 加载草稿后，按最新状态表为工序节点补色（兼容旧草稿、支持新增状态）
+function normalizeDraftColors(nodes, statusMap) {
+  return (nodes || []).map((n) => {
+    if (n.type === 'diamond' || n.type === 'rect') {
+      const fill = (n.data && n.data.status && statusMap[n.data.status]) || STATUS_FALLBACK;
+      return { ...n, data: { ...n.data, fill, text: '#ffffff' } };
+    }
+    return n;
+  });
 }
 
 // 从飞书「流程图草稿」表读取编辑结果
@@ -184,30 +233,55 @@ async function saveDraftToTable(nodes, edges) {
   }
 }
 
-// 菱形节点
+// 菱形节点（按状态色填充）
 function DiamondNode({ data, selected }) {
-  const pc = PLATE_COLOR[data.plate] || PLATE_COLOR['(未分板块)'];
+  const fill = data.fill || STATUS_FALLBACK;
+  const text = data.text || '#ffffff';
   return (
     <div className="dnode" style={{ width: 112, height: 56 }} title={data.name || ''}>
       <Handle type="target" position={Position.Left} className="dhandle" />
       <svg width="112" height="56" viewBox="0 0 112 56">
         <polygon
           points="56,2 110,28 56,54 2,28"
-          fill={pc.fill}
-          stroke={selected ? '#378ADD' : pc.stroke}
-          strokeWidth={selected ? 2.5 : 1.5}
+          fill={fill}
+          stroke={selected ? '#378ADD' : 'rgba(0,0,0,0.18)'}
+          strokeWidth={selected ? 2.5 : 1}
         />
       </svg>
       <div className="dinner">
-        <span className="dcode" style={{ color: pc.text }}>{data.code || '—'}</span>
-        <span className="dname">{data.name || ''}</span>
+        <span className="dcode" style={{ color: text }}>{data.code || '—'}</span>
+        <span className="dname" style={{ color: text }}>{data.name || ''}</span>
       </div>
       <Handle type="source" position={Position.Right} className="dhandle" />
     </div>
   );
 }
 
-// 分组标签节点
+// 矩形工序节点（按状态色填充）
+function RectNode({ data, selected }) {
+  const fill = data.fill || STATUS_FALLBACK;
+  const text = data.text || '#ffffff';
+  return (
+    <div
+      className="rnode"
+      style={{
+        width: 112,
+        height: 56,
+        background: fill,
+        borderColor: selected ? '#378ADD' : 'rgba(0,0,0,0.15)',
+      }}
+    >
+      <Handle type="target" position={Position.Left} className="dhandle" />
+      <div className="dinner">
+        <span className="dcode" style={{ color: text }}>{data.code || '—'}</span>
+        <span className="dname" style={{ color: text }}>{data.name || ''}</span>
+      </div>
+      <Handle type="source" position={Position.Right} className="dhandle" />
+    </div>
+  );
+}
+
+// 分组标签节点（板块色，保持不变）
 function LabelNode({ data }) {
   const pc = PLATE_COLOR[data.plate] || PLATE_COLOR['(未分板块)'];
   return (
@@ -239,19 +313,24 @@ function StartNode() {
   );
 }
 
-const nodeTypes = { diamond: DiamondNode, label: LabelNode, end: EndNode, start: StartNode };
+const nodeTypes = { diamond: DiamondNode, rect: RectNode, label: LabelNode, end: EndNode, start: StartNode };
 
 export default function App() {
   const [state, setState] = useState({ loading: true, error: null, items: [] });
   const [msg, setMsg] = useState('');
   const [editing, setEditing] = useState(null);
   const [dashState, setDashState] = useState(null);
+  const [showShapeMenu, setShowShapeMenu] = useState(false);
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const nodesRef = useRef(nodes);
   const edgesRef = useRef(edges);
   nodesRef.current = nodes;
   edgesRef.current = edges;
+
+  const statusInfo = useMemo(() => buildStatusMap(state.items), [state.items]);
+  const statusMap = statusInfo.map;
+  const statusOrder = statusInfo.order;
 
   const load = useCallback(async () => {
     try {
@@ -270,6 +349,8 @@ export default function App() {
       }));
       setState({ loading: false, error: null, items });
 
+      const smap = buildStatusMap(items);
+
       // 优先读飞书表草稿
       let draft = null;
       try {
@@ -279,14 +360,14 @@ export default function App() {
       }
 
       if (draft) {
-        setNodes(draft.nodes);
+        setNodes(normalizeDraftColors(draft.nodes, smap.map));
         setEdges(draft.edges || []);
-        setMsg('已加载已保存的编辑结果');
+        setMsg('已加载已保存的编辑结果（已按最新状态着色）');
       } else {
-        const init = buildInitial(items);
+        const init = buildInitial(items, smap.map);
         setNodes(init.nodes);
         setEdges(init.edges);
-        setMsg('已从「测试项总表」生成（相同编号已合并）');
+        setMsg('已从「测试项总表」生成（相同编号已合并，按状态着色）');
       }
     } catch (e) {
       setState({ loading: false, error: String((e && e.message) || e), items: [] });
@@ -309,36 +390,62 @@ export default function App() {
   const onConnect = useCallback((params) => setEdges((eds) => addEdge(params, eds)), [setEdges]);
 
   const onNodeDoubleClick = useCallback((_e, node) => {
-    if (node.type !== 'diamond') return;
-    const d = node.data || {};
-    setEditing({ id: node.id, code: d.code || '', name: d.name || '', status: d.status || '', recordId: d.recordId || '' });
+    if (node.type === 'diamond' || node.type === 'rect') {
+      const d = node.data || {};
+      setEditing({ type: node.type, id: node.id, code: d.code || '', name: d.name || '', status: d.status || '', recordId: d.recordId || '' });
+    } else if (node.type === 'label') {
+      const d = node.data || {};
+      setEditing({ type: 'label', id: node.id, label: d.label || '' });
+    }
   }, []);
 
   const updateNode = useCallback(() => {
     if (!editing) return;
-    setNodes((cur) =>
-      cur.map((n) =>
-        n.id === editing.id
-          ? { ...n, data: { ...n.data, code: editing.code, name: editing.name, status: editing.status } }
-          : n
-      )
-    );
+    if (editing.type === 'label') {
+      setNodes((cur) =>
+        cur.map((n) => (n.id === editing.id ? { ...n, data: { ...n.data, label: editing.label } } : n))
+      );
+    } else {
+      const smap = buildStatusMap(state.items);
+      const fill = (editing.status && smap.map[editing.status]) || STATUS_FALLBACK;
+      setNodes((cur) =>
+        cur.map((n) =>
+          n.id === editing.id
+            ? { ...n, data: { ...n.data, code: editing.code, name: editing.name, status: editing.status, fill, text: '#ffffff' } }
+            : n
+        )
+      );
+    }
     setEditing(null);
     setMsg('已更新节点内容（记得点保存）');
-  }, [editing, setNodes]);
+  }, [editing, state.items, setNodes]);
 
-  const addNode = useCallback(() => {
-    const ns = nodesRef.current;
-    const maxX = ns.reduce((m, n) => Math.max(m, n.position.x), 0);
-    const last = ns[ns.length - 1];
-    const y = last ? last.position.y : 0;
-    const id = `new-${Date.now()}`;
-    setNodes((cur) => [...cur, { id, type: 'diamond', position: { x: maxX + STEP_X, y }, data: { code: '', name: '新工序', status: '', plate: '', recordId: '' } }]);
-    if (last) {
-      setEdges((eds) => [...eds, { id: `e-${last.id}-${id}`, source: last.id, target: id, type: 'smoothstep' }]);
-    }
-    setMsg('已添加一个菱形，可拖拽/双击删除');
-  }, [setNodes, setEdges]);
+  const addShape = useCallback(
+    (type) => {
+      setShowShapeMenu(false);
+      const ns = nodesRef.current;
+      const maxX = ns.length ? ns.reduce((m, n) => Math.max(m, n.position.x), 0) : 0;
+      const maxY = ns.length ? ns.reduce((m, n) => Math.max(m, n.position.y), 0) : 0;
+      const id = `${type}-${Date.now()}`;
+      let node;
+      if (type === 'diamond') {
+        node = { id, type: 'diamond', position: { x: maxX + STEP_X, y: maxY }, data: { code: '', name: '新工序', status: '', plate: '', recordId: '', fill: STATUS_FALLBACK, text: '#ffffff' } };
+      } else if (type === 'rect') {
+        node = { id, type: 'rect', position: { x: maxX + STEP_X, y: maxY }, data: { code: '', name: '新工序', status: '', fill: STATUS_FALLBACK, text: '#ffffff' } };
+      } else if (type === 'start') {
+        node = { id, type: 'start', position: { x: maxX + STEP_X, y: maxY }, data: {} };
+      } else if (type === 'end') {
+        node = { id, type: 'end', position: { x: maxX + STEP_X, y: maxY }, data: {} };
+      } else if (type === 'label') {
+        node = { id, type: 'label', position: { x: maxX + STEP_X, y: maxY }, data: { label: '新分组', plate: '' } };
+      } else {
+        return;
+      }
+      setNodes((cur) => [...cur, node]);
+      setMsg('已添加一个图形，可拖拽、双击编辑');
+    },
+    [setNodes]
+  );
 
   const save = useCallback(async () => {
     try {
@@ -350,7 +457,8 @@ export default function App() {
   }, []);
 
   const reset = useCallback(async () => {
-    const init = buildInitial(state.items);
+    const smap = buildStatusMap(state.items);
+    const init = buildInitial(state.items, smap.map);
     setNodes(init.nodes);
     setEdges(init.edges);
     setMsg('已重置为「测试项总表」的自动生成结果');
@@ -395,17 +503,31 @@ export default function App() {
       <div className="toolbar">
         <div className="t-title">F050 产测工艺路线导图</div>
         <div className="t-actions">
-          <button className="btn" onClick={addNode}>＋ 添加菱形</button>
+          <div className="shape-wrap">
+            <button className="btn" onClick={() => setShowShapeMenu((v) => !v)}>＋ 添加图形</button>
+            {showShapeMenu && (
+              <div className="shape-menu">
+                <button onClick={() => addShape('diamond')}>菱形（工序）</button>
+                <button onClick={() => addShape('rect')}>矩形（工序）</button>
+                <button onClick={() => addShape('start')}>开始</button>
+                <button onClick={() => addShape('end')}>结束</button>
+                <button onClick={() => addShape('label')}>分组标签</button>
+              </div>
+            )}
+          </div>
           <button className="btn btn-primary" onClick={save}>保存</button>
           <button className="btn" onClick={reset}>重置</button>
         </div>
       </div>
       <div className="t-msg">{msg}</div>
       <div className="legend">
-        <span className="legend-item"><i className="lg-dot" style={{ background: STATUS_COLOR['已有做法'] }} />已有做法</span>
-        <span className="legend-item"><i className="lg-dot" style={{ background: STATUS_COLOR['待确认'] }} />待确认</span>
-        <span className="legend-item"><i className="lg-dot" style={{ background: STATUS_COLOR['缺口'] }} />缺口</span>
-        <span className="legend-tip">拖拽移动 · 点选后按 Delete 删除 · 双击跳记录 · 从节点边缘拖出连线</span>
+        {statusOrder.map((s) => (
+          <span className="legend-item" key={s}>
+            <i className="lg-dot" style={{ background: statusMap[s] }} />
+            {s}
+          </span>
+        ))}
+        <span className="legend-tip">拖拽移动 · 点选后按 Delete 删除 · 双击编辑 · 从节点边缘拖出连线</span>
       </div>
       <div className="flow-wrap">
         <ReactFlow
@@ -426,24 +548,41 @@ export default function App() {
       {editing && (
         <div className="edit-mask" onClick={() => setEditing(null)}>
           <div className="edit-panel" onClick={(e) => e.stopPropagation()}>
-            <div className="edit-title">编辑菱形</div>
-            <label>编号</label>
-            <input value={editing.code} onChange={(e) => setEditing({ ...editing, code: e.target.value })} placeholder="如 C6" />
-            <label>名称</label>
-            <input value={editing.name} onChange={(e) => setEditing({ ...editing, name: e.target.value })} placeholder="如 XY电机扭矩测试" />
-            <label>状态</label>
-            <div className="edit-status">
-              {['已有做法', '待确认', '缺口'].map((s) => (
-                <span
-                  key={s}
-                  className={`st-chip${editing.status === s ? ' on' : ''}`}
-                  style={editing.status === s ? { background: STATUS_COLOR[s], color: '#fff' } : {}}
-                  onClick={() => setEditing({ ...editing, status: s })}
-                >
-                  {s}
-                </span>
-              ))}
-            </div>
+            {editing.type === 'label' ? (
+              <>
+                <div className="edit-title">编辑分组标签</div>
+                <label>名称</label>
+                <input value={editing.label} onChange={(e) => setEditing({ ...editing, label: e.target.value })} placeholder="如 FCT板级" />
+              </>
+            ) : (
+              <>
+                <div className="edit-title">编辑工序</div>
+                <label>编号</label>
+                <input value={editing.code} onChange={(e) => setEditing({ ...editing, code: e.target.value })} placeholder="如 C6" />
+                <label>名称</label>
+                <input value={editing.name} onChange={(e) => setEditing({ ...editing, name: e.target.value })} placeholder="如 XY电机扭矩测试" />
+                <label>状态</label>
+                <div className="edit-status">
+                  <span
+                    className={`st-chip${!editing.status ? ' on' : ''}`}
+                    style={!editing.status ? { background: STATUS_FALLBACK, color: '#fff' } : {}}
+                    onClick={() => setEditing({ ...editing, status: '' })}
+                  >
+                    无
+                  </span>
+                  {statusOrder.map((s) => (
+                    <span
+                      key={s}
+                      className={`st-chip${editing.status === s ? ' on' : ''}`}
+                      style={editing.status === s ? { background: statusMap[s], color: '#fff' } : {}}
+                      onClick={() => setEditing({ ...editing, status: s })}
+                    >
+                      {s}
+                    </span>
+                  ))}
+                </div>
+              </>
+            )}
             <div className="edit-btns">
               {editing.recordId ? (
                 <button
