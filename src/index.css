@@ -265,9 +265,9 @@ body {
 }
 
 .dhandle {
-  width: 8px;
-  height: 8px;
-  background: #888780;
+  width: 6px;
+  height: 6px;
+  background: transparent;
   border: none;
 }
 

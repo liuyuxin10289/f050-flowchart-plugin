@@ -577,7 +577,7 @@ export default function App() {
           onConnect={onConnect}
           onNodeDoubleClick={onNodeDoubleClick}
           nodeTypes={nodeTypes}
-          defaultEdgeOptions={{ style: { strokeWidth: 2.5, stroke: '#6b6a65' }, markerEnd: { type: MarkerType.ArrowClosed, width: 14, height: 14, color: '#6b6a65' } }}
+          defaultEdgeOptions={{ style: { strokeWidth: 2.5, stroke: '#6b6a65' }, markerEnd: { type: MarkerType.ArrowClosed, width: 10, height: 10, color: '#6b6a65' } }}
           fitView
           fitViewOptions={{ padding: 0.2 }}
         >
