@@ -40,8 +40,8 @@ const PLATE_COLOR = {
 
 const DIAMOND_W = 140; // 菱形宽
 const DIAMOND_H = 70; // 菱形高
-const NODE_GAP = 56; // 节点横向间距
-const STEP_X = DIAMOND_W + NODE_GAP; // 196
+const NODE_GAP = 44; // 节点横向间距
+const STEP_X = DIAMOND_W + NODE_GAP; // 184
 const STEP_Y = 100; // 行间距
 const LABEL_W = 88; // 左侧分组标签宽
 
