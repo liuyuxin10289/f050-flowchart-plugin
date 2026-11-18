@@ -38,12 +38,12 @@ const PLATE_COLOR = {
   '(未分板块)': { fill: '#D3D1C7', stroke: '#5F5E5A', text: '#444441' },
 };
 
-const DIAMOND_W = 140; // 菱形宽
-const DIAMOND_H = 70; // 菱形高
-const NODE_GAP = 44; // 节点横向间距
-const STEP_X = DIAMOND_W + NODE_GAP; // 184
-const STEP_Y = 100; // 行间距
-const LABEL_W = 88; // 左侧分组标签宽
+const DIAMOND_W = 160; // 菱形宽
+const DIAMOND_H = 80; // 菱形高
+const NODE_GAP = 48; // 节点横向间距
+const STEP_X = DIAMOND_W + NODE_GAP; // 208
+const STEP_Y = 150; // 行间距
+const LABEL_W = 92; // 左侧分组标签宽
 
 // 兼容文本字段值
 function getText(v) {
@@ -161,9 +161,9 @@ function buildInitial(items, statusMap) {
     });
     let cx = LABEL_W + NODE_GAP;
     const startId = `start-${plate}`;
-    nodes.push({ id: startId, type: 'start', position: { x: cx, y: y + 13 }, data: {} });
+    nodes.push({ id: startId, type: 'start', position: { x: cx, y: y + 16 }, data: {} });
     edges.push({ id: `e-${labelId}-${startId}`, source: labelId, target: startId, type: 'straight' });
-    cx += 72 + NODE_GAP;
+    cx += 80 + NODE_GAP;
 
     let prevId = startId;
     list.forEach((it) => {
@@ -189,7 +189,7 @@ function buildInitial(items, statusMap) {
     });
 
     const endId = `end-${plate}`;
-    nodes.push({ id: endId, type: 'end', position: { x: cx, y: y + 13 }, data: {} });
+    nodes.push({ id: endId, type: 'end', position: { x: cx, y: y + 16 }, data: {} });
     edges.push({ id: `e-${prevId}-${endId}`, source: prevId, target: endId, type: 'straight' });
   });
   return { nodes, edges };
@@ -205,7 +205,7 @@ function relayoutDraft(nodes) {
     const plate = label.data && label.data.plate;
     const ds = result.filter((n) => n.type === 'diamond' && Math.abs(n.position.y - oldY) < 6);
     ds.sort((a, b) => a.position.x - b.position.x);
-    const startX = LABEL_W + NODE_GAP + 72 + NODE_GAP;
+    const startX = LABEL_W + NODE_GAP + 80 + NODE_GAP;
     ds.forEach((n, i) => {
       n.position.x = startX + i * (DIAMOND_W + NODE_GAP);
       n.position.y = newY;
@@ -214,8 +214,8 @@ function relayoutDraft(nodes) {
     label.position.y = newY;
     const st = result.find((n) => n.id === `start-${plate}`);
     const en = result.find((n) => n.id === `end-${plate}`);
-    if (st) { st.position.x = LABEL_W + NODE_GAP; st.position.y = newY + 13; }
-    if (en) { en.position.x = startX + ds.length * (DIAMOND_W + NODE_GAP); en.position.y = newY + 13; }
+    if (st) { st.position.x = LABEL_W + NODE_GAP; st.position.y = newY + 16; }
+    if (en) { en.position.x = startX + ds.length * (DIAMOND_W + NODE_GAP); en.position.y = newY + 16; }
   });
   return result;
 }
@@ -324,7 +324,7 @@ function LabelNode({ data }) {
 // 结束节点
 function EndNode() {
   return (
-    <div className="enode" style={{ width: 72, height: 44 }}>
+    <div className="enode" style={{ width: 80, height: 48 }}>
       <Handle type="target" position={Position.Left} className="dhandle" />
       结束
     </div>
@@ -334,7 +334,7 @@ function EndNode() {
 // 开始节点
 function StartNode() {
   return (
-    <div className="snode" style={{ width: 72, height: 44 }}>
+    <div className="snode" style={{ width: 80, height: 48 }}>
       <Handle type="target" position={Position.Left} className="dhandle" />
       开始
       <Handle type="source" position={Position.Right} className="dhandle" />
@@ -577,9 +577,10 @@ export default function App() {
           onConnect={onConnect}
           onNodeDoubleClick={onNodeDoubleClick}
           nodeTypes={nodeTypes}
+          minZoom={0.7}
           defaultEdgeOptions={{ style: { strokeWidth: 2.5, stroke: '#6b6a65' }, markerEnd: { type: MarkerType.ArrowClosed, width: 10, height: 10, color: '#6b6a65' } }}
           fitView
-          fitViewOptions={{ padding: 0.2 }}
+          fitViewOptions={{ padding: 0.1 }}
         >
           <Background />
           <Controls />
