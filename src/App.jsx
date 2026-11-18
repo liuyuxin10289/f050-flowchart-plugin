@@ -40,8 +40,8 @@ const PLATE_COLOR = {
 
 const DIAMOND_W = 168; // 菱形宽
 const DIAMOND_H = 84; // 菱形高
-const NODE_GAP = 22; // 节点横向间距
-const STEP_X = DIAMOND_W + NODE_GAP; // 190
+const NODE_GAP = 48; // 节点横向间距
+const STEP_X = DIAMOND_W + NODE_GAP; // 216
 const STEP_Y = 122; // 行间距
 const LABEL_W = 100; // 左侧分组标签宽
 
@@ -552,7 +552,7 @@ export default function App() {
           onConnect={onConnect}
           onNodeDoubleClick={onNodeDoubleClick}
           nodeTypes={nodeTypes}
-          defaultEdgeOptions={{ markerEnd: { type: MarkerType.ArrowClosed, width: 18, height: 18, color: '#6b6a65' } }}
+          defaultEdgeOptions={{ style: { strokeWidth: 2.5, stroke: '#6b6a65' }, markerEnd: { type: MarkerType.ArrowClosed, width: 20, height: 20, color: '#6b6a65' } }}
           fitView
           fitViewOptions={{ padding: 0.2 }}
         >
