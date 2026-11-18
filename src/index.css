@@ -198,13 +198,13 @@ body {
 
 .dcode {
   font-family: 'SFMono-Regular', Consolas, 'Courier New', monospace;
-  font-size: 18px;
+  font-size: 15px;
   font-weight: 600;
   line-height: 1.1;
 }
 
 .dname {
-  font-size: 13px;
+  font-size: 11px;
   line-height: 1.25;
   text-align: center;
   display: -webkit-box;
@@ -237,7 +237,7 @@ body {
   justify-content: center;
   border-radius: 6px;
   border: 1px solid;
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 500;
   position: relative;
 }
@@ -249,7 +249,7 @@ body {
   background: #5f5e5a;
   color: #ffffff;
   border-radius: 4px;
-  font-size: 15px;
+  font-size: 14px;
   position: relative;
 }
 
@@ -260,7 +260,7 @@ body {
   background: #2e7d32;
   color: #ffffff;
   border-radius: 4px;
-  font-size: 15px;
+  font-size: 14px;
   position: relative;
 }
 

@@ -38,12 +38,12 @@ const PLATE_COLOR = {
   '(未分板块)': { fill: '#D3D1C7', stroke: '#5F5E5A', text: '#444441' },
 };
 
-const DIAMOND_W = 168; // 菱形宽
-const DIAMOND_H = 84; // 菱形高
-const NODE_GAP = 48; // 节点横向间距
-const STEP_X = DIAMOND_W + NODE_GAP; // 216
-const STEP_Y = 122; // 行间距
-const LABEL_W = 100; // 左侧分组标签宽
+const DIAMOND_W = 140; // 菱形宽
+const DIAMOND_H = 70; // 菱形高
+const NODE_GAP = 44; // 节点横向间距
+const STEP_X = DIAMOND_W + NODE_GAP; // 184
+const STEP_Y = 100; // 行间距
+const LABEL_W = 88; // 左侧分组标签宽
 
 // 兼容文本字段值
 function getText(v) {
@@ -161,9 +161,9 @@ function buildInitial(items, statusMap) {
     });
     let cx = LABEL_W + NODE_GAP;
     const startId = `start-${plate}`;
-    nodes.push({ id: startId, type: 'start', position: { x: cx, y: y + 16 }, data: {} });
+    nodes.push({ id: startId, type: 'start', position: { x: cx, y: y + 13 }, data: {} });
     edges.push({ id: `e-${labelId}-${startId}`, source: labelId, target: startId, type: 'straight' });
-    cx += 84 + NODE_GAP;
+    cx += 72 + NODE_GAP;
 
     let prevId = startId;
     list.forEach((it) => {
@@ -189,7 +189,7 @@ function buildInitial(items, statusMap) {
     });
 
     const endId = `end-${plate}`;
-    nodes.push({ id: endId, type: 'end', position: { x: cx, y: y + 16 }, data: {} });
+    nodes.push({ id: endId, type: 'end', position: { x: cx, y: y + 13 }, data: {} });
     edges.push({ id: `e-${prevId}-${endId}`, source: prevId, target: endId, type: 'straight' });
   });
   return { nodes, edges };
@@ -299,7 +299,7 @@ function LabelNode({ data }) {
 // 结束节点
 function EndNode() {
   return (
-    <div className="enode" style={{ width: 84, height: 52 }}>
+    <div className="enode" style={{ width: 72, height: 44 }}>
       <Handle type="target" position={Position.Left} className="dhandle" />
       结束
     </div>
@@ -309,7 +309,7 @@ function EndNode() {
 // 开始节点
 function StartNode() {
   return (
-    <div className="snode" style={{ width: 84, height: 52 }}>
+    <div className="snode" style={{ width: 72, height: 44 }}>
       <Handle type="target" position={Position.Left} className="dhandle" />
       开始
       <Handle type="source" position={Position.Right} className="dhandle" />
@@ -366,7 +366,7 @@ export default function App() {
 
       if (draft) {
         setNodes(normalizeDraftColors(draft.nodes, smap.map));
-        setEdges(draft.edges || []);
+        setEdges((draft.edges || []).map((e) => ({ ...e, type: 'straight' })));
         setMsg('已加载已保存的编辑结果（已按最新状态着色）');
       } else {
         const init = buildInitial(items, smap.map);
@@ -552,7 +552,7 @@ export default function App() {
           onConnect={onConnect}
           onNodeDoubleClick={onNodeDoubleClick}
           nodeTypes={nodeTypes}
-          defaultEdgeOptions={{ style: { strokeWidth: 2.5, stroke: '#6b6a65' }, markerEnd: { type: MarkerType.ArrowClosed, width: 20, height: 20, color: '#6b6a65' } }}
+          defaultEdgeOptions={{ style: { strokeWidth: 2.5, stroke: '#6b6a65' }, markerEnd: { type: MarkerType.ArrowClosed, width: 14, height: 14, color: '#6b6a65' } }}
           fitView
           fitViewOptions={{ padding: 0.2 }}
         >
