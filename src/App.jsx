@@ -126,25 +126,28 @@ function buildInitial(items) {
       position: { x: 0, y },
       data: { label: plate, plate },
     });
-    let prevId = labelId;
-    list.forEach((it, i) => {
+    let cx = LABEL_W + 14;
+    const startId = `start-${plate}`;
+    nodes.push({ id: startId, type: 'start', position: { x: cx, y: y + 8 }, data: {} });
+    edges.push({ id: `e-${labelId}-${startId}`, source: labelId, target: startId, type: 'smoothstep' });
+    cx += 60 + 14;
+
+    let prevId = startId;
+    list.forEach((it) => {
       const id = `${plate}|${it.code || it.name}`;
       nodes.push({
         id,
         type: 'diamond',
-        position: { x: LABEL_W + 26 + i * STEP_X, y },
+        position: { x: cx, y },
         data: { code: it.code, name: it.name, status: it.status, plate, recordId: it.recordId },
       });
       edges.push({ id: `e-${prevId}-${id}`, source: prevId, target: id, type: 'smoothstep' });
       prevId = id;
+      cx += 112 + 14;
     });
+
     const endId = `end-${plate}`;
-    nodes.push({
-      id: endId,
-      type: 'end',
-      position: { x: LABEL_W + 26 + list.length * STEP_X, y: y + 8 },
-      data: {},
-    });
+    nodes.push({ id: endId, type: 'end', position: { x: cx, y: y + 8 }, data: {} });
     edges.push({ id: `e-${prevId}-${endId}`, source: prevId, target: endId, type: 'smoothstep' });
   });
   return { nodes, edges };
@@ -199,9 +202,6 @@ function DiamondNode({ data, selected }) {
         <span className="dcode" style={{ color: pc.text }}>{data.code || '—'}</span>
         <span className="dname">{data.name || ''}</span>
       </div>
-      {data.status ? (
-        <span className="ddot" style={{ background: STATUS_COLOR[data.status] || '#888780' }} title={data.status} />
-      ) : null}
       <Handle type="source" position={Position.Right} className="dhandle" />
     </div>
   );
@@ -228,7 +228,18 @@ function EndNode() {
   );
 }
 
-const nodeTypes = { diamond: DiamondNode, label: LabelNode, end: EndNode };
+// 开始节点
+function StartNode() {
+  return (
+    <div className="snode" style={{ width: 60, height: 40 }}>
+      <Handle type="target" position={Position.Left} className="dhandle" />
+      开始
+      <Handle type="source" position={Position.Right} className="dhandle" />
+    </div>
+  );
+}
+
+const nodeTypes = { diamond: DiamondNode, label: LabelNode, end: EndNode, start: StartNode };
 
 export default function App() {
   const [state, setState] = useState({ loading: true, error: null, items: [] });
