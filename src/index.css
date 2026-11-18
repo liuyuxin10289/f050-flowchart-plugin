@@ -267,8 +267,9 @@ body {
 .dhandle {
   width: 6px;
   height: 6px;
-  background: transparent;
-  border: none;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
 }
 
 .tip {
