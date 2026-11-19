@@ -13,7 +13,7 @@ import {
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 
-const TABLE_ID = 'tblo7aujbBBknvBE'; // 测试项总表
+const TABLE_ID = 'tblSEvcWK6sfbtdU'; // 总表（从在线表格同步）
 const DRAFT_TABLE_ID = 'tblUAqCjDSj0Dmrm'; // 流程图草稿表
 const PLATE_ORDER = ['FCT板级', '组件', '整机自检', '整机产测', '模型打印'];
 
